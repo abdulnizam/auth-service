@@ -4,8 +4,10 @@ A lightweight authentication microservice built with Go, supporting:
 
 -   ✅ User registration and login
 -   📧 Email verification with a secure code (via Mailjet)
+-   📧 Email verification with a secure link (via Mailjet)
 -   🔐 JWT-based authentication
 -   🐬 MariaDB for persistent user storage
+-   🛠️ Admin dashboard (Next.js)
 -   🐳 Docker support for easy deployment
 
 ---
@@ -14,10 +16,14 @@ A lightweight authentication microservice built with Go, supporting:
 
 -   Register users with hashed passwords
 -   Send email verification codes
+-   Send email verification **links**
 -   Prevent login until email is verified
--   Secure JWT token generation on login
+-   JWT token generation on login
+-   Admin dashboard to manage users
+    -   Activate/deactivate accounts
+    -   Change user type (admin/standard)
 -   RESTful API endpoints
--   Dockerized setup for consistent local and cloud deployment
+-   Dockerized setup for local/cloud deployment
 
 ---
 
@@ -60,17 +66,14 @@ DB_HOST=localhost
 DB_PORT=3306
 DB_NAME=auth_service
 JWT_SECRET=your-super-secret
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-secret
-GOOGLE_REDIRECT_URI=http://localhost:8080/auth/google/callback
-SMTP_HOST=in.mailjet.com
-SMTP_PORT=587
-SMTP_USER=your-mailjet-api-key
-SMTP_PASS=your-mailjet-secret-key
+MJ_API_KEY=your-mailjet-api-key
+MJ_SECRET_KEY=your-mailjet-secret
 EMAIL_FROM=verify@xxx.com
 ```
 
-> 💡 Ensure your local MariaDB is running with the `auth_service` DB created and user `auth` has correct access.
+> 💡 Ensure MariaDB is running with the `auth_service` DB created and your user has privileges.
+
+---
 
 ### 3. Run locally
 
@@ -78,33 +81,37 @@ EMAIL_FROM=verify@xxx.com
 go run ./cmd/main.go
 ```
 
-Server should start on: `http://localhost:8080`
+Server should start at: `http://localhost:8080`
 
 ---
 
 ## 🐳 Docker Support
 
-### 1. Build & Run (Connects to host's MySQL)
+### 1. Build & Run (uses local MariaDB)
 
 ```bash
 docker compose up --build auth-service -d
 ```
 
-> ⚠️ Ensure your `.env` uses `DB_HOST=host.docker.internal` to connect to your Mac's local MySQL from inside Docker.
+> Use `DB_HOST=host.docker.internal` if MariaDB runs on your host machine.
 
 ---
 
 ## 🧪 API Endpoints
 
-| Method | Endpoint         | Description                 |
-| ------ | ---------------- | --------------------------- |
-| POST   | `/auth/register` | Register new user           |
-| POST   | `/auth/verify`   | Verify email with code      |
-| POST   | `/auth/login`    | Login with email & password |
+| Method | Endpoint           | Description                       |
+| ------ | ------------------ | --------------------------------- |
+| POST   | `/auth/register`   | Register new user                 |
+| POST   | `/auth/verify`     | Verify email with secure link     |
+| POST   | `/auth/login`      | Login with email & password       |
+| POST   | `/auth/resend`     | Resend verification email         |
+| GET    | `/users`           | Get all users (for dashboard)     |
+| POST   | `/admin/users`     | Admin creates user & sends link   |
+| PUT    | `/admin/users/:id` | Update user type or active status |
 
 ---
 
-## 🔐 Sample JSON Payloads
+## 🧪 Sample Payloads
 
 ### Register
 
@@ -116,23 +123,30 @@ POST /auth/register
 }
 ```
 
-### Verify Email
+### Verify (from email link)
+
+```http
+GET /verify?token=abc123&email=test@example.com
+```
+
+### Admin Create
 
 ```json
-POST /auth/verify
+POST /admin/users
 {
-  "email": "test@example.com",
-  "token": "12345"
+  "email": "user@example.com",
+  "password": "secure",
+  "type": "standard"  // optional
 }
 ```
 
-### Login
+### Admin Update
 
 ```json
-POST /auth/login
+PUT /admin/users/1
 {
-  "email": "test@example.com",
-  "password": "password123"
+  "is_active": true,
+  "user_type": "admin"
 }
 ```
 
@@ -146,6 +160,7 @@ POST /auth/login
 -   [Mailjet](https://www.mailjet.com/)
 -   [Docker](https://www.docker.com/)
 -   [JWT](https://jwt.io/)
+-   [Next.js (Dashboard)](https://nextjs.org/)
 
 ---
 
@@ -158,4 +173,4 @@ POST /auth/login
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+MIT License
